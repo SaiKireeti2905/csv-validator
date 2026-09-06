@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "csv-validator"
-version = "2.0.0"
+version = "1.0.0"
 description = "Validate a CSV file against a JSON schema (columns, non-emptiness, and value types)."
 readme = "README.md"
 requires-python = ">=3.10"

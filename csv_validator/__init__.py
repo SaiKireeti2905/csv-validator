@@ -8,7 +8,16 @@
 """
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
+
 from csv_validator.validator import validate
 
 __all__ = ["validate"]
-__version__ = "1.0.0"
+
+# Single source of truth is the version in pyproject.toml. We read it from the
+# installed package metadata rather than hardcoding a second copy here. The
+# fallback covers running straight from the source tree without installing.
+try:
+    __version__ = version("csv-validator")
+except PackageNotFoundError:
+    __version__ = "0.0.0+source"
