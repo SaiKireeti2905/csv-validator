@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "csv-validator"
+version = "2.0.0"
+description = "Validate a CSV file against a JSON schema (columns, non-emptiness, and value types)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sai Kireeti" }]
+dependencies = []  # standard library only
+
+[project.optional-dependencies]
+pandas = ["pandas>=2.0"]
+dev = ["pytest>=7.0", "ruff>=0.5"]
+
+[project.scripts]
+csv-validate = "csv_validator.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["csv_validator*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
