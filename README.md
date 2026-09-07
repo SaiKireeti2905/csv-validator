@@ -77,7 +77,7 @@ cli  ->  validator  ->  schema (JSON -> list of Check objects)
 - `checks/` and `engines/` are both packages with one module per plugin, each
   registering itself with `@register("...")`. The package auto-imports its modules
   on load, so **adding a check or an engine is just a new file in the folder** and
-  nothing else in the codebase changes. That is the open/closed principle.
+  nothing else in the codebase changes.
 - Checks return `Failure` objects and never format text. All formatting lives in
   `report.render`, so text and JSON stay in sync.
 - `validator.py` picks an engine via `get_engine`, reads the file, and runs the
