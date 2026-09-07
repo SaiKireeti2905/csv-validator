@@ -13,7 +13,7 @@ dependencies = []  # standard library only
 
 [project.optional-dependencies]
 pandas = ["pandas>=2.0"]
-dev = ["pytest>=7.0", "ruff>=0.5"]
+dev = ["pytest>=7.0", "ruff>=0.5", "mypy>=1.8"]
 
 [project.scripts]
 csv-validate = "csv_validator.cli:main"
@@ -31,3 +31,13 @@ line-length = 110
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["csv_validator"]
+strict = true
+
+# pandas is an optional engine and ships no type stubs by default.
+[[tool.mypy.overrides]]
+module = ["pandas", "pandas.*"]
+ignore_missing_imports = true

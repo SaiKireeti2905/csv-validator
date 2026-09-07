@@ -3,13 +3,10 @@
 A small command-line tool that validates a CSV file against a JSON schema. It
 runs three kinds of checks and reports every problem it finds.
 
-- **Python 3.10+**, standard library only.
-- Clean, layered design; adding a new check is one class plus one line.
-
 ## Requirements
 
-Python 3.10 or newer. No third-party packages are needed to run it (`pytest` and
-`ruff` are only for development).
+Python 3.10 or newer. No third-party packages are needed to run it; `pandas` is an
+optional engine, and `pytest`, `ruff`, and `mypy` are for development.
 
 ## Usage
 
@@ -17,22 +14,32 @@ Python 3.10 or newer. No third-party packages are needed to run it (`pytest` and
 python validate.py --file_path="tests/data/valid.csv" --schema_path="tests/data/my_schema.json"
 ```
 
-An optional `--engine` chooses the reader: `csv` (standard library, the default)
-or `pandas`. Both produce the same result.
+Options:
 
-```bash
-python validate.py --file_path="tests/data/valid.csv" --schema_path="tests/data/my_schema.json" --engine=pandas
-```
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--file_path` / `--file-path`     | required | CSV file to validate |
+| `--schema_path` / `--schema-path` | required | JSON schema to validate against |
+| `--engine`        | `csv`  | Reader: `csv` (standard library) or `pandas` |
+| `--format`        | `text` | Output format: `text` or `json` |
+| `--delimiter`     | `,`    | Field delimiter (a single character) |
+| `--max-failures`  | `100`  | Stop reporting after N problems; `0` means unlimited |
+| `--version`       |        | Print the version and exit |
 
-Exit codes: `0` passed, `1` the data has problems, `2` a tool error (bad
-arguments, missing file, a broken schema, or the pandas engine not installed).
+Exit codes:
+
+| Code | Meaning |
+|------|---------|
+| 0 | Passed |
+| 1 | Failed: the data has problems |
+| 2 | Tool error: bad arguments, missing/unreadable file, or a broken schema |
 
 Example output:
 
 ```text
 FAIL - 2 problem(s) found:
-  - types_check: 'Fifty' in 'age' is not a valid integer at line 2
-  - types_check: 'Forty four' in 'age' is not a valid integer at line 3
+  - types_check: 'Fifty' is not a valid integer [column 'age', line 2]
+  - types_check: 'Forty four' is not a valid integer [column 'age', line 3]
 ```
 
 Line numbers count from the file, so the header is line 1 and the first data row
@@ -58,6 +65,28 @@ is line 2.
 
 Supported types: `string`, `integer`, `float`, `bool`.
 
+## How it works
+
+```
+cli  ->  validator  ->  schema (JSON -> list of Check objects)
+                    ->  a reader (csv or pandas) -> (columns, rows)
+         each check returns Failure objects; the report renders them
+         cli prints text or JSON and returns an exit code
+```
+
+- `checks.py` defines a `Check` base class and the three checks, plus a `CHECKS`
+  registry mapping each schema name to its class. Adding a check is one class and
+  one line in the registry.
+- Checks return `Failure` objects and never format text. All formatting lives in
+  `report.render`, so text and JSON stay in sync.
+- `validator.py` reads the file (via a `csv` or `pandas` reader picked from a
+  `READERS` registry) and runs the checks. It depends only on the `(columns, rows)`
+  shape, not on how the file was read.
+
+**Scaling.** The file is read fully into memory, which keeps the code simple and
+is fine for typical inputs. For very large files the same design supports reading
+row by row; the one place to change is `read_csv` in `validator.py`.
+
 ## Project layout
 
 ```
@@ -66,17 +95,16 @@ csv-validator/
   pyproject.toml
   README.md
   csv_validator/
-    config.py            defaults: minimum Python, default engine
-    errors.py            SchemaError
+    config.py            defaults: min Python, engine, format, delimiter, max-failures
+    errors.py            SchemaError, CsvReadError
+    report.py            Failure + render (text and JSON)
     checks.py            Check base class, the 3 checks, type helpers, the registry
     schema.py            JSON schema -> list of Check objects
     validator.py         the csv and pandas readers + run the checks
     cli.py               arguments, version guard, exit codes
   tests/
     data/                the 4 sample CSVs + my_schema.json
-    test_checks.py
-    test_schema.py
-    test_cli.py
+    test_checks.py  test_report.py  test_schema.py  test_validator.py  test_cli.py
 ```
 
 ## Testing
@@ -85,8 +113,8 @@ csv-validator/
 pip install .[dev]
 pytest
 ruff check .
+mypy
 ```
 
-The suite covers the four sample files (valid.csv passes; bad_columns,
-empty_values, and bad_types each fail one check), the type helpers, each check on
-its own, and the CLI's exit codes.
+The suite covers the four sample files, the type helpers, each check on its own,
+schema and read errors, the report rendering, and the CLI options and exit codes.

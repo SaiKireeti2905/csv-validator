@@ -45,46 +45,55 @@ def test_is_bool():
 
 # --- columns check -------------------------------------------------------
 def test_columns_pass():
-    """An exact column match produces no errors."""
+    """An exact column match produces no failures."""
     assert ColumnsCheck(["a", "b"]).run(["a", "b"], []) == []
 
 
 def test_columns_missing_extra_and_duplicate():
     """Missing, unexpected, and duplicate columns are all reported."""
-    errors = ColumnsCheck(["a", "b"]).run(["a", "x", "x"], [])
-    joined = " ".join(errors)
-    assert "missing column 'b'" in joined
-    assert "unexpected column 'x'" in joined
-    assert "duplicate column 'x'" in joined
+    failures = ColumnsCheck(["a", "b"]).run(["a", "x", "x"], [])
+    found = {(f.message, f.column) for f in failures}
+    assert ("missing expected column", "b") in found
+    assert ("unexpected column not in schema", "x") in found
+    assert ("duplicate column in file", "x") in found
+
+
+def test_columns_duplicate_reported_once():
+    """A column appearing three times is reported as a duplicate only once."""
+    failures = ColumnsCheck(["a"]).run(["a", "a", "a"], [])
+    duplicates = [f for f in failures if f.message == "duplicate column in file"]
+    assert len(duplicates) == 1
 
 
 # --- non-empty check -----------------------------------------------------
 def test_non_empty_flags_blank_with_line():
     """A blank or whitespace value is flagged with its file line number."""
     rows = [{"a": "x"}, {"a": ""}, {"a": "  "}]
-    errors = NonEmptyCheck(["a"]).run(["a"], rows)
-    assert len(errors) == 2
-    assert "line 3" in errors[0] and "line 4" in errors[1]
+    failures = NonEmptyCheck(["a"]).run(["a"], rows)
+    assert [f.line for f in failures] == [3, 4]
+    assert all(f.check == "non_empty_check" for f in failures)
 
 
 def test_non_empty_missing_column_reported_once():
     """A configured column absent from the file is reported once, not per row."""
-    errors = NonEmptyCheck(["ghost"]).run(["a"], [{"a": "x"}])
-    assert len(errors) == 1 and "not in the file" in errors[0]
+    failures = NonEmptyCheck(["ghost"]).run(["a"], [{"a": "x"}])
+    assert len(failures) == 1 and failures[0].column == "ghost"
 
 
 # --- types check ---------------------------------------------------------
 def test_types_pass():
-    """Values matching their declared types produce no errors."""
+    """Values matching their declared types produce no failures."""
     rows = [{"age": "50", "salary": "50000.00"}]
     assert TypesCheck({"age": "integer", "salary": "float"}).run(["age", "salary"], rows) == []
 
 
 def test_types_flags_bad_value_with_line():
-    """A value of the wrong type is flagged with its line number."""
+    """A value of the wrong type is flagged with its line number and value."""
     rows = [{"age": "50"}, {"age": "Fifty"}]
-    errors = TypesCheck({"age": "integer"}).run(["age"], rows)
-    assert len(errors) == 1 and "line 3" in errors[0]
+    failures = TypesCheck({"age": "integer"}).run(["age"], rows)
+    assert len(failures) == 1
+    assert failures[0].line == 3 and failures[0].column == "age"
+    assert "Fifty" in failures[0].message
 
 
 def test_types_skips_empty():

@@ -2,9 +2,9 @@
 
     from csv_validator import validate
 
-    errors = validate("data.csv", "schema.json")
-    if errors:
-        print("\n".join(errors))
+    failures = validate("data.csv", "schema.json")
+    if failures:
+        print(f"{len(failures)} problem(s) found")
 """
 from __future__ import annotations
 

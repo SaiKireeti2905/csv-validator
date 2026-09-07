@@ -1,8 +1,8 @@
 """The validation checks, the type helpers they use, and the check registry.
 
-Every check is a small class that extends `Check` and implements `run`. Adding a
-new kind of check is: write a class, then add one line to the CHECKS registry at
-the bottom. The schema parser, the validator, and the CLI never change.
+Every check extends `Check` and implements `run`, returning `Failure` objects.
+Checks find problems; they do not format text (that is `report.render`'s job).
+Adding a new check is: write a class, add one line to the CHECKS registry.
 """
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 from csv_validator.errors import SchemaError
+from csv_validator.report import Failure
 
 # --- value-type helpers --------------------------------------------------
 # ASCII-digit patterns, so that things Python's int()/float() quietly accept,
@@ -50,15 +51,12 @@ TYPE_CHECKERS: dict[str, Callable[[str], bool]] = {
 
 # --- the abstraction -----------------------------------------------------
 class Check(ABC):
-    """A validation rule.
-
-    Built from its schema params, it inspects the header and rows and returns a
-    list of human-readable error messages. An empty list means it passed.
-    """
+    """A validation rule. Built from its schema params, it inspects the data and
+    returns a list of Failure objects (empty means it passed)."""
 
     @abstractmethod
-    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[str]:
-        """Inspect the data and return error messages (empty means the check passed)."""
+    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[Failure]:
+        """Inspect the data and return the failures found (empty means it passed)."""
         ...
 
 
@@ -72,19 +70,21 @@ class ColumnsCheck(Check):
             raise SchemaError("columns_check params must be a list of column names")
         self.expected = params
 
-    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[str]:
+    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[Failure]:
         """Report missing, unexpected, and duplicate columns in the header."""
-        errors: list[str] = []
+        failures: list[Failure] = []
         seen: set[str] = set()
+        reported: set[str] = set()
         for name in columns:
-            if name in seen:
-                errors.append(f"columns_check: duplicate column '{name}'")
+            if name in seen and name not in reported:  # report each duplicate once
+                failures.append(Failure("columns_check", "duplicate column in file", column=name))
+                reported.add(name)
             seen.add(name)
         for missing in sorted(set(self.expected) - set(columns)):
-            errors.append(f"columns_check: missing column '{missing}'")
+            failures.append(Failure("columns_check", "missing expected column", column=missing))
         for extra in sorted(set(columns) - set(self.expected)):
-            errors.append(f"columns_check: unexpected column '{extra}'")
-        return errors
+            failures.append(Failure("columns_check", "unexpected column not in schema", column=extra))
+        return failures
 
 
 class NonEmptyCheck(Check):
@@ -96,17 +96,17 @@ class NonEmptyCheck(Check):
             raise SchemaError("non_empty_check params must be a list of column names")
         self.columns = params
 
-    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[str]:
+    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[Failure]:
         """Report blank values, and any listed column that is missing from the file."""
-        errors: list[str] = []
+        failures: list[Failure] = []
         for column in self.columns:
             if column not in columns:
-                errors.append(f"non_empty_check: column '{column}' is not in the file")
+                failures.append(Failure("non_empty_check", "column is not in the file", column=column))
                 continue
             for line, row in enumerate(rows, start=2):  # header is line 1
                 if row.get(column, "").strip() == "":
-                    errors.append(f"non_empty_check: empty value in '{column}' at line {line}")
-        return errors
+                    failures.append(Failure("non_empty_check", "empty value", column=column, line=line))
+        return failures
 
 
 class TypesCheck(Check):
@@ -123,12 +123,12 @@ class TypesCheck(Check):
             raise SchemaError(f"types_check has unknown type(s): {unknown}")
         self.column_types = params
 
-    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[str]:
+    def run(self, columns: list[str], rows: list[dict[str, str]]) -> list[Failure]:
         """Report values that do not match their column's declared type, skipping empties."""
-        errors: list[str] = []
+        failures: list[Failure] = []
         for column, type_name in self.column_types.items():
             if column not in columns:
-                errors.append(f"types_check: column '{column}' is not in the file")
+                failures.append(Failure("types_check", "column is not in the file", column=column))
                 continue
             checker = TYPE_CHECKERS[type_name]
             for line, row in enumerate(rows, start=2):
@@ -136,14 +136,19 @@ class TypesCheck(Check):
                 if value.strip() == "":
                     continue  # emptiness is the non-empty check's job
                 if not checker(value):
-                    errors.append(
-                        f"types_check: '{value}' in '{column}' is not a valid {type_name} at line {line}"
+                    failures.append(
+                        Failure(
+                            "types_check",
+                            f"'{value}' is not a valid {type_name}",
+                            column=column,
+                            line=line,
+                        )
                     )
-        return errors
+        return failures
 
 
 # --- the registry: add a check by adding one class above and one line here ---
-CHECKS: dict[str, type[Check]] = {
+CHECKS: dict[str, Callable[[object], Check]] = {
     "columns_check": ColumnsCheck,
     "non_empty_check": NonEmptyCheck,
     "types_check": TypesCheck,
