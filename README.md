@@ -34,7 +34,7 @@ Exit codes:
 | 1 | Failed: the data has problems |
 | 2 | Tool error: bad arguments, missing/unreadable file, or a broken schema |
 
-Example output:
+Example output (text, the default):
 
 ```text
 FAIL - 2 problem(s) found:
@@ -42,8 +42,33 @@ FAIL - 2 problem(s) found:
   - types_check: 'Forty four' is not a valid integer [column 'age', line 3]
 ```
 
-Line numbers count from the file, so the header is line 1 and the first data row
-is line 2.
+The same run with `--format json`:
+
+```json
+{
+  "ok": false,
+  "truncated": false,
+  "failure_count": 2,
+  "failures": [
+    {
+      "check": "types_check",
+      "message": "'Fifty' is not a valid integer",
+      "column": "age",
+      "line": 2
+    },
+    {
+      "check": "types_check",
+      "message": "'Forty four' is not a valid integer",
+      "column": "age",
+      "line": 3
+    }
+  ]
+}
+```
+
+`truncated` is `true` only when `--max-failures N` stops the run before all problems
+are listed. Line numbers count from the file, so the header is line 1 and the first
+data row is line 2.
 
 ## Schema format
 
