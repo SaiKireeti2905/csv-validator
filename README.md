@@ -84,10 +84,6 @@ cli  ->  validator  ->  schema (JSON -> list of Check objects)
   `READERS` registry) and runs the checks. It depends only on the `(columns, rows)`
   shape, not on how the file was read.
 
-**Scaling.** The file is read fully into memory, which keeps the code simple and
-is fine for typical inputs. For very large files the same design supports reading
-row by row; the one place to change is `read_csv` in `validator.py`.
-
 ## Project layout
 
 ```

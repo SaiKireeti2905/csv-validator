@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, dataclass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Failure:
     """One problem found in the data: which check, a short message, and where."""
 
