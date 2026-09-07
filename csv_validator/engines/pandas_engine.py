@@ -23,7 +23,7 @@ def read_pandas(
     try:
         import pandas as pd
     except ImportError as exc:
-        raise ImportError("the pandas engine needs pandas installed: pip install pandas") from exc
+        raise CsvReadError("the pandas engine needs pandas installed: pip install pandas") from exc
     try:
         # dtype=str and keep_default_na=False keep every cell as raw text, so pandas
         # does not guess types or turn blanks into NaN and hide the problems we look for.

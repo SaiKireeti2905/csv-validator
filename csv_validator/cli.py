@@ -12,7 +12,7 @@ import sys
 
 from csv_validator import __version__, config
 from csv_validator.engines import known_engines
-from csv_validator.errors import CsvReadError, SchemaError
+from csv_validator.errors import CsvValidatorError
 from csv_validator.report import render
 from csv_validator.validator import validate
 
@@ -77,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         failures = validate(
             args.file_path, args.schema_path, engine=args.engine, delimiter=args.delimiter
         )
-    except (CsvReadError, SchemaError, ImportError) as exc:
+    except CsvValidatorError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_TOOL_ERROR
 
