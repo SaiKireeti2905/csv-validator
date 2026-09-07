@@ -18,4 +18,4 @@ DEFAULT_FORMAT: str = "text"
 DEFAULT_DELIMITER: str = ","
 
 # Stop reporting after this many problems; 0 means unlimited.
-DEFAULT_MAX_FAILURES: int = 100
+DEFAULT_MAX_FAILURES: int = 0

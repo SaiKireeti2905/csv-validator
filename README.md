@@ -69,20 +69,20 @@ Supported types: `string`, `integer`, `float`, `bool`.
 
 ```
 cli  ->  validator  ->  schema (JSON -> list of Check objects)
-                    ->  a reader (csv or pandas) -> (columns, rows)
+                    ->  an engine (csv or pandas) -> (columns, rows)
          each check returns Failure objects; the report renders them
          cli prints text or JSON and returns an exit code
 ```
 
-- `checks/` is a package with one module per check. Each check subclasses `Check`
-  and registers itself with `@register("...")`; the package auto-imports its
-  modules on load, so **adding a check is just a new file in `checks/`** and
-  nothing else in the codebase changes.
+- `checks/` and `engines/` are both packages with one module per plugin, each
+  registering itself with `@register("...")`. The package auto-imports its modules
+  on load, so **adding a check or an engine is just a new file in the folder** and
+  nothing else in the codebase changes. That is the open/closed principle.
 - Checks return `Failure` objects and never format text. All formatting lives in
   `report.render`, so text and JSON stay in sync.
-- `validator.py` reads the file (via a `csv` or `pandas` reader picked from a
-  `READERS` registry) and runs the checks. It depends only on the `(columns, rows)`
-  shape, not on how the file was read.
+- `validator.py` picks an engine via `get_engine`, reads the file, and runs the
+  checks. It depends only on the `(columns, rows)` shape an engine returns, not on
+  how the file was read.
 
 ## Project layout
 
@@ -97,8 +97,12 @@ csv-validator/
     report.py            Failure + render (text and JSON)
     value_types.py       type predicates used by the types check
     schema.py            JSON schema -> list of Check objects
-    validator.py         the csv and pandas readers + run the checks
+    validator.py         run the checks over the chosen engine's output
     cli.py               arguments, version guard, exit codes
+    engines/             one module per engine, auto-registered
+      base.py            Engine type + the @register registry
+      csv_engine.py      the 'csv' engine (standard library)
+      pandas_engine.py   the 'pandas' engine (optional)
     checks/              one module per check, auto-registered
       base.py            Check base class + the @register registry
       columns.py         columns_check
@@ -106,7 +110,7 @@ csv-validator/
       types.py           types_check
   tests/
     data/                the 4 sample CSVs + my_schema.json
-    test_checks.py  test_report.py  test_schema.py  test_validator.py  test_cli.py
+    test_checks.py  test_engines.py  test_report.py  test_schema.py  test_validator.py  test_cli.py
 ```
 
 ## Testing

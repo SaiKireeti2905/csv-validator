@@ -11,9 +11,10 @@ import argparse
 import sys
 
 from csv_validator import __version__, config
+from csv_validator.engines import known_engines
 from csv_validator.errors import CsvReadError, SchemaError
 from csv_validator.report import render
-from csv_validator.validator import READERS, validate
+from csv_validator.validator import validate
 
 EXIT_OK = 0
 EXIT_VALIDATION_FAILED = 1
@@ -37,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the JSON schema.",
     )
     parser.add_argument(
-        "--engine", choices=sorted(READERS), default=config.DEFAULT_ENGINE, metavar="ENGINE",
+        "--engine", choices=sorted(known_engines()), default=config.DEFAULT_ENGINE, metavar="ENGINE",
         help="Reader to use: 'csv' (standard library) or 'pandas'.",
     )
     parser.add_argument(
@@ -51,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--max-failures", type=int, default=config.DEFAULT_MAX_FAILURES, metavar="N",
-        help="Stop reporting after N problems; 0 means unlimited (default: 100).",
+        help="Stop reporting after N problems; 0 means unlimited.",
     )
     return parser
 
@@ -81,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_TOOL_ERROR
 
     limit = args.max_failures
-    truncated = limit > 0 and len(failures) > limit
+    truncated = 0 < limit < len(failures)
     shown = failures[:limit] if limit > 0 else failures
     print(render(shown, args.output_format, truncated))
     return EXIT_VALIDATION_FAILED if failures else EXIT_OK
