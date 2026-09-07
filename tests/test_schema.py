@@ -1,7 +1,9 @@
 """Schema loading: the happy path and strict error handling."""
 import pytest
 
-from csv_validator.checks import ColumnsCheck, NonEmptyCheck, TypesCheck
+from csv_validator.checks.columns import ColumnsCheck
+from csv_validator.checks.non_empty import NonEmptyCheck
+from csv_validator.checks.types import TypesCheck
 from csv_validator.errors import SchemaError
 from csv_validator.schema import load_schema
 

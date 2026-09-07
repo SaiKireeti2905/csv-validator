@@ -74,9 +74,10 @@ cli  ->  validator  ->  schema (JSON -> list of Check objects)
          cli prints text or JSON and returns an exit code
 ```
 
-- `checks.py` defines a `Check` base class and the three checks, plus a `CHECKS`
-  registry mapping each schema name to its class. Adding a check is one class and
-  one line in the registry.
+- `checks/` is a package with one module per check. Each check subclasses `Check`
+  and registers itself with `@register("...")`; the package auto-imports its
+  modules on load, so **adding a check is just a new file in `checks/`** and
+  nothing else in the codebase changes.
 - Checks return `Failure` objects and never format text. All formatting lives in
   `report.render`, so text and JSON stay in sync.
 - `validator.py` reads the file (via a `csv` or `pandas` reader picked from a
@@ -98,10 +99,15 @@ csv-validator/
     config.py            defaults: min Python, engine, format, delimiter, max-failures
     errors.py            SchemaError, CsvReadError
     report.py            Failure + render (text and JSON)
-    checks.py            Check base class, the 3 checks, type helpers, the registry
+    value_types.py       type predicates used by the types check
     schema.py            JSON schema -> list of Check objects
     validator.py         the csv and pandas readers + run the checks
     cli.py               arguments, version guard, exit codes
+    checks/              one module per check, auto-registered
+      base.py            Check base class + the @register registry
+      columns.py         columns_check
+      non_empty.py       non_empty_check
+      types.py           types_check
   tests/
     data/                the 4 sample CSVs + my_schema.json
     test_checks.py  test_report.py  test_schema.py  test_validator.py  test_cli.py

@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from csv_validator.checks import CHECKS, Check
+from csv_validator.checks import Check, get_check, known_checks
 from csv_validator.errors import SchemaError
 
 
@@ -42,9 +42,9 @@ def load_schema(path: str | Path) -> list[Check]:
         if not isinstance(group, dict):
             raise SchemaError("Each item in 'validations' must be an object")
         for name, spec in group.items():
-            check_class = CHECKS.get(name)
+            check_class = get_check(name)
             if check_class is None:
-                raise SchemaError(f"Unknown check '{name}'. Known checks: {sorted(CHECKS)}")
+                raise SchemaError(f"Unknown check '{name}'. Known checks: {known_checks()}")
             if not isinstance(spec, dict) or "params" not in spec:
                 raise SchemaError(f"'{name}' must be an object with a 'params' key")
             checks.append(check_class(spec["params"]))  # each check validates its own params

@@ -1,15 +1,23 @@
 """The type helpers and each check in isolation."""
 import pytest
 
-from csv_validator.checks import (
-    ColumnsCheck,
-    NonEmptyCheck,
-    TypesCheck,
-    is_bool,
-    is_float,
-    is_integer,
-)
+from csv_validator.checks import get_check, known_checks
+from csv_validator.checks.columns import ColumnsCheck
+from csv_validator.checks.non_empty import NonEmptyCheck
+from csv_validator.checks.types import TypesCheck
 from csv_validator.errors import SchemaError
+from csv_validator.value_types import is_bool, is_float, is_integer
+
+
+def test_registry_autoloads_all_checks():
+    """All three checks register themselves when the package is imported."""
+    assert set(known_checks()) == {"columns_check", "non_empty_check", "types_check"}
+
+
+def test_get_check_resolves_known_and_unknown():
+    """get_check returns the class for a known name and None for an unknown one."""
+    assert get_check("columns_check") is ColumnsCheck
+    assert get_check("nope") is None
 
 
 # --- type helpers --------------------------------------------------------
